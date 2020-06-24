@@ -261,15 +261,15 @@ static int shiftfs_d_revalidate(struct dentry *dentry, unsigned int flags)
 	int err = 1;
 	struct dentry *lowerd = dentry->d_fsdata;
 
-	if (d_unhashed(lowerd) ||
-	    ((d_is_negative(lowerd) != d_is_negative(dentry))))
-		return 0;
-
 	if (flags & LOOKUP_RCU)
 		return -ECHILD;
 
 	if ((lowerd->d_flags & DCACHE_OP_REVALIDATE))
 		err = lowerd->d_op->d_revalidate(lowerd, flags);
+
+	if (d_unhashed(lowerd) ||
+	    ((d_is_negative(lowerd) != d_is_negative(dentry))))
+		return 0;
 
 	if (d_really_is_positive(dentry)) {
 		struct inode *inode = d_inode(dentry);
