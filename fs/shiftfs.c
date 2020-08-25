@@ -627,6 +627,10 @@ static int shiftfs_rename(struct inode *olddir, struct dentry *old,
 	int err = -EINVAL;
 	const struct cred *oldcred;
 
+	/* We don't yet support any advanced rename operations. */
+	if (flags)
+		return -EINVAL;
+
 	trapd = lock_rename(lowerd_dir_new, lowerd_dir_old);
 
 	if (trapd == lowerd_old || trapd == lowerd_new)
