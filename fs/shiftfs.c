@@ -260,6 +260,11 @@ static int shiftfs_d_revalidate(struct dentry *dentry, unsigned int flags)
 {
 	int err = 1;
 	struct dentry *lowerd = dentry->d_fsdata;
+	struct inode *loweri;
+	const struct cred *oldcred;
+	struct dentry *new;
+	struct dentry *lowerd_parent = dentry->d_parent->d_fsdata;
+	struct inode *loweri_parent = d_inode(lowerd_parent);
 
 	if (d_unhashed(lowerd) ||
 	    ((d_is_negative(lowerd) != d_is_negative(dentry))))
@@ -267,6 +272,17 @@ static int shiftfs_d_revalidate(struct dentry *dentry, unsigned int flags)
 
 	if (flags & LOOKUP_RCU)
 		return -ECHILD;
+
+	inode_lock(loweri_parent);
+	oldcred = shiftfs_override_creds(dentry->d_sb);
+	new = lookup_one_len(dentry->d_name.name, lowerd_parent, dentry->d_name.len);
+	revert_creds(oldcred);
+	inode_unlock(loweri_parent);
+
+	if (IS_ERR(new) || new != lowerd) {
+		err = 0;
+		goto out;
+	}
 
 	if ((lowerd->d_flags & DCACHE_OP_REVALIDATE))
 		err = lowerd->d_op->d_revalidate(lowerd, flags);
@@ -278,6 +294,8 @@ static int shiftfs_d_revalidate(struct dentry *dentry, unsigned int flags)
 		shiftfs_copyattr(loweri, inode);
 	}
 
+out:
+	dput(new);
 	return err;
 }
 
