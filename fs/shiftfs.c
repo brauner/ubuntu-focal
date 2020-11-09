@@ -155,19 +155,22 @@ static void shiftfs_copyflags(struct inode *from, struct inode *to)
 
 static void shiftfs_file_accessed(struct file *file)
 {
-	struct inode *upperi, *loweri;
+	struct inode *inode, *loweri;
 
 	if (file->f_flags & O_NOATIME)
 		return;
 
-	upperi = file_inode(file);
-	loweri = upperi->i_private;
+	inode = file_inode(file);
+	loweri = inode->i_private;
 
 	if (!loweri)
 		return;
 
-	upperi->i_mtime = loweri->i_mtime;
-	upperi->i_ctime = loweri->i_ctime;
+	if ((!timespec64_equal(&inode->i_mtime, &loweri->i_mtime) ||
+	     !timespec64_equal(&inode->i_ctime, &loweri->i_ctime))) {
+		inode->i_mtime = loweri->i_mtime;
+		inode->i_ctime = loweri->i_ctime;
+	}
 
 	touch_atime(&file->f_path);
 }
