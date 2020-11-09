@@ -815,6 +815,26 @@ static int shiftfs_getattr(const struct path *path, struct kstat *stat,
 	return 0;
 }
 
+static int shiftfs_update_time(struct inode *inode, struct timespec64 *ts,
+			       int flags)
+{
+	if (flags & S_ATIME) {
+		struct shiftfs_super_info *info = inode->i_sb->s_fs_info;
+		struct path lowerpath = {
+			.mnt = info->mnt,
+			.dentry = d_find_any_alias(inode->i_private),
+		};
+
+		if (lowerpath.dentry) {
+			touch_atime(&lowerpath);
+			inode->i_atime = d_inode(lowerpath.dentry)->i_atime;
+			dput(lowerpath.dentry);
+		}
+	}
+
+	return 0;
+}
+
 #ifdef CONFIG_SHIFT_FS_POSIX_ACL
 
 static int
@@ -1010,6 +1030,7 @@ static const struct inode_operations shiftfs_dir_inode_operations = {
 	.getattr	= shiftfs_getattr,
 	.listxattr	= shiftfs_listxattr,
 	.get_acl	= shiftfs_get_acl,
+	.update_time	= shiftfs_update_time,
 };
 
 static const struct inode_operations shiftfs_file_inode_operations = {
@@ -1020,6 +1041,7 @@ static const struct inode_operations shiftfs_file_inode_operations = {
 	.permission	= shiftfs_permission,
 	.setattr	= shiftfs_setattr,
 	.tmpfile	= shiftfs_tmpfile,
+	.update_time	= shiftfs_update_time,
 };
 
 static const struct inode_operations shiftfs_special_inode_operations = {
@@ -1028,6 +1050,7 @@ static const struct inode_operations shiftfs_special_inode_operations = {
 	.listxattr	= shiftfs_listxattr,
 	.permission	= shiftfs_permission,
 	.setattr	= shiftfs_setattr,
+	.update_time	= shiftfs_update_time,
 };
 
 static const struct inode_operations shiftfs_symlink_inode_operations = {
@@ -1035,6 +1058,7 @@ static const struct inode_operations shiftfs_symlink_inode_operations = {
 	.get_link	= shiftfs_get_link,
 	.listxattr	= shiftfs_listxattr,
 	.setattr	= shiftfs_setattr,
+	.update_time	= shiftfs_update_time,
 };
 
 static struct file *shiftfs_open_realfile(const struct file *file,
